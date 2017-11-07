@@ -8,16 +8,22 @@ let sampleTime = Cfg.get('app.sample_time');
 let id = Cfg.get('device.id');
 let dataTopic = 'devices/' + id + '/data';
 let metaTopic = 'devices/' + id + '/meta';
+let statusTopic = 'devices/' + id + '/status';
 let sequence = 0;
 
 let dht = DHT.create(pin, DHT.DHT22);
 
-
-// Send meta data
+// Things to do when devices boots up
 Timer.set(10000 /* milliseconds */, false /* repeat */, function() {
-  let message = JSON.stringify({temp: '°C', hum: '%', time: 's', seq: 'num'});
-  let ok = MQTT.pub(metaTopic, message, 1, 1);
+  // Notify everyone the device is online
+  let message = JSON.stringify({status: 'online'});
+  let ok = MQTT.pub(statusTopic, message, 1, 1);
+  print(message);
+  print('Published:', ok ? 'yes' : 'no');
 
+  // Update metadata
+  message = JSON.stringify({temp: '°C', hum: '%', time: 's', seq: 'num'});
+  ok = MQTT.pub(metaTopic, message, 1, 1);
   print(message);
   print('Published:', ok ? 'yes' : 'no');
 }, null);
