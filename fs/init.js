@@ -5,6 +5,8 @@ load('api_sys.js');
 load('api_timer.js');
 
 let led = Cfg.get('pins.led');
+let getRssi = ffi('int wifi_station_get_rssi(void)');
+
 
 let getInfo = function() {
   return JSON.stringify({
@@ -17,7 +19,7 @@ let getInfo = function() {
 GPIO.set_mode(led, GPIO.MODE_OUTPUT);
 Timer.set(1000 /* 1 sec */, true /* repeat */, function() {
   let value = GPIO.toggle(led);
-  print(value ? 'Tick' : 'Tock', 'uptime:', Sys.uptime(), getInfo());
+  print(value ? 'Tick' : 'Tock', 'uptime:', Sys.uptime(), getInfo(), getRssi());
 }, null);
 
 // Monitor network connectivity.
