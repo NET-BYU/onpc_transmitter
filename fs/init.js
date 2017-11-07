@@ -1,49 +1,36 @@
 load('api_config.js');
-load('api_dht.js');
-load('api_mqtt.js');
+load('api_gpio.js');
+load('api_net.js');
+load('api_sys.js');
 load('api_timer.js');
 
-let pin = Cfg.get('app.pin');
-let sampleTime = Cfg.get('app.sample_time');
-let id = Cfg.get('device.id');
-let dataTopic = 'devices/' + id + '/data';
-let metaTopic = 'devices/' + id + '/meta';
-let statusTopic = 'devices/' + id + '/status';
-let sequence = 0;
+let led = Cfg.get('pins.led');
 
-let dht = DHT.create(pin, DHT.DHT22);
+let getInfo = function() {
+  return JSON.stringify({
+    total_ram: Sys.total_ram(),
+    free_ram: Sys.free_ram()
+  });
+};
 
-// Things to do when devices boots up
-Timer.set(10000 /* milliseconds */, false /* repeat */, function() {
-  // Notify everyone the device is online
-  let message = JSON.stringify({status: 'online'});
-  let ok = MQTT.pub(statusTopic, message, 1, 1);
-  print(message);
-  print('Published:', ok ? 'yes' : 'no');
-
-  // Update metadata
-  message = JSON.stringify({temp: '°C', hum: '%', time: 's', seq: 'num'});
-  ok = MQTT.pub(metaTopic, message, 1, 1);
-  print(message);
-  print('Published:', ok ? 'yes' : 'no');
+// Blink built-in LED every second
+GPIO.set_mode(led, GPIO.MODE_OUTPUT);
+Timer.set(1000 /* 1 sec */, true /* repeat */, function() {
+  let value = GPIO.toggle(led);
+  print(value ? 'Tick' : 'Tock', 'uptime:', Sys.uptime(), getInfo());
 }, null);
 
-
-// Transmit data
-Timer.set(sampleTime /* milliseconds */, true /* repeat */, function() {
-  let t = dht.getTemp();
-  let h = dht.getHumidity();
-
-  if (isNaN(h) || isNaN(t)) {
-    print('Failed to read data from sensor');
-    return;
+// Monitor network connectivity.
+Net.setStatusEventHandler(function(ev, arg) {
+  let evs = '???';
+  if (ev === Net.STATUS_DISCONNECTED) {
+    evs = 'DISCONNECTED';
+  } else if (ev === Net.STATUS_CONNECTING) {
+    evs = 'CONNECTING';
+  } else if (ev === Net.STATUS_CONNECTED) {
+    evs = 'CONNECTED';
+  } else if (ev === Net.STATUS_GOT_IP) {
+    evs = 'GOT_IP';
   }
-
-  let message = JSON.stringify({temp: t, hum: h, time: Timer.now(), seq: sequence});
-  let ok = MQTT.pub(dataTopic, message, 1, 0);
-
-  print(message);
-  print('Published:', ok ? 'yes' : 'no');
-
-  sequence += 1;
+  print('== Net event:', ev, evs);
 }, null);
