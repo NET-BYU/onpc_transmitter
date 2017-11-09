@@ -10,6 +10,9 @@ mongoose_os_version: ${mos.version}
 config_schema:
   - ["pins", "o", {title: "Pins layout"}]
   - ["pins.led", "i", 2, {title: "LED GPIO pin"}]
+  - ["mqtt.enable", true]
+  - ["mqtt.server", "broker-prisms-p1.bmi.utah.edu:8883"]
+  - ["mqtt.ssl_ca_cert", "prisms-broker.crt"]
 
 sources:
   - src
