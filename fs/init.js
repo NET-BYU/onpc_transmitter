@@ -6,7 +6,8 @@ load('api_timer.js');
 
 let led = Cfg.get('pins.led');
 let getRssi = ffi('int wifi_station_get_rssi(void)');
-let writeMeasurement = ffi('void write_measurement(char *)');
+let queuePut = ffi('bool queue_put(char *)');
+let queueStart = ffi('bool start_queue()');
 
 let sequence = 0;
 
@@ -26,17 +27,23 @@ Timer.set(1000 /* 1 sec */, true /* repeat */, function() {
 }, null);
 
 
-Timer.set(60000 /* 60 sec */, true /* repeat */, function() {
-  print("##################### Running test function!");
-  writeMeasurement(JSON.stringify({
-    pm25: 100,
-    pm10: 50,
-    rssi: getRssi(),
-    sequence: sequence,
-    time: Timer.now()
-  }) + "\n");
+Timer.set(2000 /* 2 sec */, false /* repeat */, function() {
+  let startResult = queueStart();
+  print("Result: ", startResult);
 
-  sequence += 1;
+  Timer.set(2000 /* 2 sec */, true /* repeat */, function() {
+    print("##################### Running test function!");
+    let result = queuePut(JSON.stringify({
+      pm25: 100,
+      pm10: 50,
+      rssi: getRssi(),
+      sequence: sequence,
+      time: Timer.now()
+    }) + "\n");
+    print("Result: ", result);
+
+    sequence += 1;
+  }, null);
 }, null);
 
 
