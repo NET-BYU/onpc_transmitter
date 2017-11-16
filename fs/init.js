@@ -6,8 +6,9 @@ load('api_timer.js');
 
 let led = Cfg.get('pins.led');
 let getRssi = ffi('int wifi_station_get_rssi(void)');
-let queuePut = ffi('bool queue_put(char *)');
 let queueStart = ffi('bool start_queue()');
+let queuePut = ffi('bool queue_put(char *)');
+let queuePeek = ffi('char* queue_peek()');
 
 let sequence = 0;
 
@@ -39,10 +40,16 @@ Timer.set(2000 /* 2 sec */, false /* repeat */, function() {
       rssi: getRssi(),
       sequence: sequence,
       time: Timer.now()
-    }) + "\n");
+    }));
     print("Result: ", result);
 
     sequence += 1;
+  }, null);
+
+  Timer.set(5000, true, function() {
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    let data = queuePeek();
+    print("Data peeked:", data);
   }, null);
 }, null);
 
