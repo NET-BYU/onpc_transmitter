@@ -1,5 +1,6 @@
 load('api_config.js');
 load('api_gpio.js');
+load('api_mqtt.js');
 load('api_net.js');
 load('api_sys.js');
 load('api_timer.js');
@@ -8,7 +9,9 @@ let led = Cfg.get('pins.led');
 let getRssi = ffi('int wifi_station_get_rssi(void)');
 let queueStart = ffi('bool start_queue()');
 let queuePut = ffi('bool queue_put(char *)');
-let queuePeek = ffi('char* queue_peek()');
+let queuePeek = ffi('void queue_peek(void(*)(char *, userdata), userdata)');
+let queueDelete = ffi('bool queue_delete()');
+let topic = '/device/x/data';
 
 let sequence = 0;
 
@@ -28,12 +31,47 @@ Timer.set(1000 /* 1 sec */, true /* repeat */, function() {
 }, null);
 
 
+function upload_data(delay) {
+  Timer.set(delay, false, function(delay) {
+    print("######################### Peeking at data");
+    queuePeek(function(data, delay) {
+      print("Data peeked:", data);
+
+      if (data === null) {
+        print("######################### No data left, trying again later");
+        upload_data(delay);
+        return;
+      }
+
+      // Valid data -- let's publish it
+      print("######################### Trying to upload data");
+      let ok = MQTT.pub(topic, data, 1);
+
+      if (!ok) {
+        // Try again later
+        print("######################### Unable to upload data -- try again later");
+        upload_data(delay);
+        return;
+      }
+      else {
+        print("######################### Deleting data");
+        queueDelete();
+        // Try getting more data
+        upload_data(500);
+      }
+      print("######################### Done");
+    }, delay);
+  }, delay);
+}
+
+
 Timer.set(2000 /* 2 sec */, false /* repeat */, function() {
+  print("######################### Starting queue");
   let startResult = queueStart();
   print("Result: ", startResult);
 
   Timer.set(2000 /* 2 sec */, true /* repeat */, function() {
-    print("##################### Running test function!");
+    print("######################### Adding data to queue");
     let result = queuePut(JSON.stringify({
       pm25: 100,
       pm10: 50,
@@ -46,11 +84,8 @@ Timer.set(2000 /* 2 sec */, false /* repeat */, function() {
     sequence += 1;
   }, null);
 
-  Timer.set(5000, true, function() {
-    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    let data = queuePeek();
-    print("Data peeked:", data);
-  }, null);
+  print("######################### Starting process to upload data");
+  upload_data(5000);
 }, null);
 
 

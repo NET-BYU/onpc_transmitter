@@ -19,6 +19,8 @@ int max_length = 100;
 int current_length = NULL;
 FILE *fp = NULL;
 
+typedef void (*peek_callback)(char *data, void *userdata);
+
 
 bool start_queue() {
     // TODO: Currently assuming the file is not there
@@ -96,13 +98,14 @@ bool queue_put(char *data) {
 }
 
 
-char* queue_peek() {
+void queue_peek(peek_callback cb, void *cb_arg) {
     fp = fopen(file_name, "r+b");
 
     // Make sure no errors occurred
     if (fp == NULL) {
         LOG(LL_ERROR, ("Can not open file %s", file_name));
-        return NULL;
+        cb(NULL, cb_arg);
+        return;
     }
 
     // Go to beginning of the file
@@ -111,15 +114,19 @@ char* queue_peek() {
     int head_pos = NULL;
     if (fread(&head_pos, sizeof(head_pos), 1, fp) != 1) {
         LOG(LL_ERROR, ("Failed to read head position of file: %s", file_name));
-        return NULL;
+        cb(NULL, cb_arg);
+        return;
     }
+
+    // TODO: Check if we are already at the beginning of the file
 
     // Read length data
     unsigned int length = NULL;
     fseek(fp, head_pos - sizeof(length), SEEK_SET);
     if (fread(&length, sizeof(length), 1, fp) != 1) {
         LOG(LL_ERROR, ("Failed to read length of data: %s", file_name));
-        return NULL;
+        cb(NULL, cb_arg);
+        return;
     }
     LOG(LL_INFO, ("Head position %d", head_pos));
     LOG(LL_INFO, ("Length of data %d", length));
@@ -131,7 +138,8 @@ char* queue_peek() {
 
     if (data == NULL) {
         LOG(LL_INFO, ("Out of memory %s", file_name));
-        return NULL;
+        cb(NULL, cb_arg);
+        return;
     }
 
     fseek(fp, head_pos - sizeof(length) - length, SEEK_SET);
@@ -142,15 +150,54 @@ char* queue_peek() {
             free(data);
         }
 
-        return NULL;
+        cb(NULL, cb_arg);
+        return;
     }
+
     data[length] = '\0'; // Null terminate
     LOG(LL_INFO, ("Data: %s", data));
+    cb(data, cb_arg);
 
+    free(data);
     fclose(fp);
-    return data;
 }
 
 bool queue_delete() {
+    fp = fopen(file_name, "r+b");
+
+    // Make sure no errors occurred
+    if (fp == NULL) {
+        LOG(LL_ERROR, ("Can not open file %s", file_name));
+        return false;
+    }
+
+    // Go to beginning of the file
+    fseek(fp, 0, SEEK_SET);
+
+    int head_pos = NULL;
+    if (fread(&head_pos, sizeof(head_pos), 1, fp) != 1) {
+        LOG(LL_ERROR, ("Failed to read head position of file: %s", file_name));
+        return false;
+    }
+
+    // TODO: Check if we are already at the beginning of the file
+
+    // Read length data
+    unsigned int length = NULL;
+    fseek(fp, head_pos - sizeof(length), SEEK_SET);
+    if (fread(&length, sizeof(length), 1, fp) != 1) {
+        LOG(LL_ERROR, ("Failed to read length of data: %s", file_name));
+        return false;
+    }
+    LOG(LL_INFO, ("Head position %d", head_pos));
+    LOG(LL_INFO, ("Length of data %d", length));
+
+    // Update head position
+    head_pos -= sizeof(length) + length;
+    if (fwrite(&head_pos, sizeof(head_pos), 1, fp) != 1) {
+        LOG(LL_ERROR, ("Failed to write position header to file: %s", file_name));
+        return false;
+    }
+
     return true;
 }
