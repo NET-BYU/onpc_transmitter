@@ -14,6 +14,9 @@ config_schema:
   - ["mqtt.server", "broker-prisms-p1.bmi.utah.edu:8883"]
   - ["mqtt.ssl_ca_cert", "prisms-broker.crt"]
 
+includes:
+  - include
+
 sources:
   - src
 
