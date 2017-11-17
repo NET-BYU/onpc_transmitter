@@ -78,13 +78,19 @@ Timer.set(2000 /* 2 sec */, false /* repeat */, function() {
       sequence: sequence,
       time: Timer.now()
     }));
-    print("Result: ", result);
+    print("Put result:", result);
 
     sequence += 1;
   }, null);
 
   Timer.set(1000 /* 1 sec */, true /* repeat */, function() {
-    print("######################### Deleting data from queue");
+    queuePeek(function(data) {
+      print("Peeked data: ", data);
+      print("######################### Deleting data from queue");
+      let result = queueDelete();
+      print("Delete result:", result);
+    }, null);
+
 
   }, null);
 
