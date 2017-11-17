@@ -31,38 +31,37 @@ Timer.set(1000 /* 1 sec */, true /* repeat */, function() {
 }, null);
 
 
-function upload_data(delay) {
-  Timer.set(delay, false, function(delay) {
-    print("######################### Peeking at data");
-    queuePeek(function(data, delay) {
-      print("Data peeked:", data);
+// function upload_data(delay) {
+//   Timer.set(delay, false, function(delay) {
+//     print("######################### Peeking at data");
+//     queuePeek(function(data, delay) {
+//       print("Data peeked:", data);
 
-      if (data === null) {
-        print("######################### No data left, trying again later");
-        upload_data(delay);
-        return;
-      }
+//       if (data === null) {
+//         print("######################### No data left, trying again later");
+//         upload_data(delay);
+//         return;
+//       }
 
-      // Valid data -- let's publish it
-      print("######################### Trying to upload data");
-      let ok = MQTT.pub(topic, data, 1);
+//       // Valid data -- let's publish it
+//       print("######################### Trying to upload data");
+//       let ok = MQTT.pub(topic, data, 1);
 
-      if (!ok) {
-        // Try again later
-        print("######################### Unable to upload data -- try again later");
-        upload_data(delay);
-        return;
-      }
-      else {
-        print("######################### Deleting data");
-        queueDelete();
-        // Try getting more data
-        upload_data(500);
-      }
-      print("######################### Done");
-    }, delay);
-  }, delay);
-}
+//       if (!ok) {
+//         // Try again later
+//         print("######################### Unable to upload data -- try again later");
+//         upload_data(delay);
+//       }
+//       else {
+//         print("######################### Deleting data");
+//         queueDelete();
+//         // Try getting more data
+//         upload_data(500);
+//       }
+//       print("######################### Done");
+//     }, delay);
+//   }, delay);
+// }
 
 
 Timer.set(2000 /* 2 sec */, false /* repeat */, function() {
@@ -84,8 +83,13 @@ Timer.set(2000 /* 2 sec */, false /* repeat */, function() {
     sequence += 1;
   }, null);
 
-  print("######################### Starting process to upload data");
-  upload_data(5000);
+  Timer.set(1000 /* 1 sec */, true /* repeat */, function() {
+    print("######################### Deleting data from queue");
+
+  }, null);
+
+  // print("######################### Starting process to upload data");
+  // upload_data(5000);
 }, null);
 
 
