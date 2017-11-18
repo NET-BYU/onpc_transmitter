@@ -18,8 +18,14 @@ bool start_queue() {
             goto done;
         }
 
-        int head_pos = 4;
+        int head_pos = 8;
+        int tail_pos = 8;
+
         if (fwrite(&head_pos, sizeof(head_pos), 1, fp) != 1) {
+            LOG(LL_ERROR, ("Failed to write header to file: %s", file_name));
+            goto done;
+        }
+        if (fwrite(&tail_pos, sizeof(tail_pos), 1, fp) != 1) {
             LOG(LL_ERROR, ("Failed to write header to file: %s", file_name));
             goto done;
         }
@@ -40,6 +46,7 @@ bool start_queue() {
 bool queue_put(char *data) {
     FILE *fp = NULL;
     bool success = false;
+    int head_pos = NULL;
 
     fp = fopen(file_name, "r+b");
     if (fp == NULL) {
@@ -50,7 +57,6 @@ bool queue_put(char *data) {
     // Go to beginning of the file
     fseek(fp, 0, SEEK_SET);
 
-    int head_pos = NULL;
     if (fread(&head_pos, sizeof(head_pos), 1, fp) != 1) {
         LOG(LL_ERROR, ("Failed to read head position of file: %s", file_name));
         goto done;
@@ -63,15 +69,15 @@ bool queue_put(char *data) {
     LOG(LL_INFO, ("Writing data %s", data));
     struct mg_str str_data = mg_mk_str(data);
 
-    // Write actual data
-    if (fwrite(str_data.p, 1, str_data.len, fp) != str_data.len) {
-        LOG(LL_ERROR, ("Failed to write data to file: %s", file_name));
-        goto done;
-    }
-
     // Write length of data
     if (fwrite(&str_data.len, sizeof(str_data.len), 1, fp) != 1) {
         LOG(LL_ERROR, ("Failed to write meta data to file: %s", file_name));
+        goto done;
+    }
+
+    // Write actual data
+    if (fwrite(str_data.p, 1, str_data.len, fp) != str_data.len) {
+        LOG(LL_ERROR, ("Failed to write data to file: %s", file_name));
         goto done;
     }
 
@@ -100,6 +106,8 @@ bool queue_put(char *data) {
 void queue_peek(peek_callback cb, void *cb_arg) {
     FILE *fp = NULL;
     char *data = NULL;
+    int head_pos = NULL;
+    int tail_pos = NULL;
 
     fp = fopen(file_name, "r+b");
     if (fp == NULL) {
@@ -110,29 +118,34 @@ void queue_peek(peek_callback cb, void *cb_arg) {
     // Go to beginning of the file
     fseek(fp, 0, SEEK_SET);
 
-    int head_pos = NULL;
     if (fread(&head_pos, sizeof(head_pos), 1, fp) != 1) {
         LOG(LL_ERROR, ("Failed to read head position of file: %s", file_name));
         goto done;
     }
 
-    LOG(LL_INFO, ("Head position: %d", head_pos));
+    if (fread(&tail_pos, sizeof(tail_pos), 1, fp) != 1) {
+        LOG(LL_ERROR, ("Failed to read tail position of file: %s", file_name));
+        goto done;
+    }
 
-    if (head_pos == 4) {
+    LOG(LL_INFO, ("Head position: %d", head_pos));
+    LOG(LL_INFO, ("Tail position: %d", tail_pos));
+
+    if (head_pos == tail_pos) {
         LOG(LL_INFO, ("No data to peek at"));
         goto done;
     }
 
     // Read length data
     unsigned int length = NULL;
-    fseek(fp, head_pos - sizeof(length), SEEK_SET);
+    fseek(fp, tail_pos, SEEK_SET);
     if (fread(&length, sizeof(length), 1, fp) != 1) {
         LOG(LL_ERROR, ("Failed to read length of data: %s", file_name));
         goto done;
     }
 
     LOG(LL_INFO, ("Length of data %d", length));
-    LOG(LL_INFO, ("Reading from %d to %d", head_pos - sizeof(length) - length, head_pos - sizeof(length)));
+    LOG(LL_INFO, ("Reading from %d to %d", tail_pos + sizeof(length), tail_pos + sizeof(length) + length));
 
     // Read data
     data = (char *) malloc(length + 1);
@@ -141,7 +154,8 @@ void queue_peek(peek_callback cb, void *cb_arg) {
         goto done;
     }
 
-    fseek(fp, head_pos - sizeof(length) - length, SEEK_SET);
+    // The file position should already be lined up to read
+    // the data so we don't need to seek
     if (fread(data, 1, length, fp) != length) {
         LOG(LL_ERROR, ("Failed to read data: %s", file_name));
         goto done;
@@ -166,6 +180,8 @@ void queue_peek(peek_callback cb, void *cb_arg) {
 bool queue_delete() {
     FILE *fp = NULL;
     bool success = false;
+    int head_pos = NULL;
+    int tail_pos = NULL;
 
     fp = fopen(file_name, "r+b");
     if (fp == NULL) {
@@ -176,22 +192,27 @@ bool queue_delete() {
     // Go to beginning of the file
     fseek(fp, 0, SEEK_SET);
 
-    int head_pos = NULL;
     if (fread(&head_pos, sizeof(head_pos), 1, fp) != 1) {
         LOG(LL_ERROR, ("Failed to read head position of file: %s", file_name));
         goto done;
     }
-    LOG(LL_INFO, ("Head position %d", head_pos));
+    if (fread(&tail_pos, sizeof(tail_pos), 1, fp) != 1) {
+        LOG(LL_ERROR, ("Failed to read tail position of file: %s", file_name));
+        goto done;
+    }
 
-    if (head_pos == 4) {
-        LOG(LL_INFO, ("Already at the end of the stack"));
+    LOG(LL_INFO, ("Head position %d", head_pos));
+    LOG(LL_INFO, ("Tail position %d", tail_pos));
+
+    if (head_pos == tail_pos) {
+        LOG(LL_INFO, ("No more data left to delete"));
         success = true;
         goto done;
     }
 
     // Read length data
     unsigned int length = NULL;
-    fseek(fp, head_pos - sizeof(length), SEEK_SET);
+    fseek(fp, tail_pos, SEEK_SET);
     if (fread(&length, sizeof(length), 1, fp) != 1) {
         LOG(LL_ERROR, ("Failed to read length of data: %s", file_name));
         goto done;
@@ -199,12 +220,12 @@ bool queue_delete() {
     LOG(LL_INFO, ("Length of data %d", length));
 
     // Go to beginning of the file
-    fseek(fp, 0, SEEK_SET);
+    fseek(fp, 4, SEEK_SET);
 
-    // Update head position
-    head_pos -= sizeof(length) + length;
-    LOG(LL_INFO, ("New head position %d", head_pos));
-    if (fwrite(&head_pos, sizeof(head_pos), 1, fp) != 1) {
+    // Update tail position
+    tail_pos += sizeof(length) + length;
+    LOG(LL_INFO, ("New tail position %d", tail_pos));
+    if (fwrite(&tail_pos, sizeof(tail_pos), 1, fp) != 1) {
         LOG(LL_ERROR, ("Failed to write position header to file: %s", file_name));
         goto done;
     }
