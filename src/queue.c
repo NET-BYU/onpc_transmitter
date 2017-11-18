@@ -6,25 +6,26 @@ bool start_queue() {
     FILE *fp = NULL;
     bool result = false;
 
-    // TODO: Currently assuming the file is not there
-    fp = fopen(file_name, "w+b");
+    LOG(LL_INFO, ("Opening queue file: %s", file_name));
+    fp = fopen(file_name, "r+b");
 
     if (fp == NULL) {
-        LOG(LL_ERROR, ("Can not open file %s", file_name));
-        goto done;
+        // The file does not exist
+        LOG(LL_INFO, ("File does not exist. Trying to open file in write mode."));
+        fp = fopen(file_name, "w+b");
+        if (fp == NULL) {
+            LOG(LL_ERROR, ("Can not open file %s", file_name));
+            goto done;
+        }
+
+        int head_pos = 4;
+        if (fwrite(&head_pos, sizeof(head_pos), 1, fp) != 1) {
+            LOG(LL_ERROR, ("Failed to write header to file: %s", file_name));
+            goto done;
+        }
     }
 
-    int head_pos = 4;
-
-    // Go to start of file
-    fseek(fp, 0, SEEK_SET);
-
-    if (fwrite(&head_pos, sizeof(head_pos), 1, fp) != 1) {
-        LOG(LL_ERROR, ("Failed to write header to file: %s", file_name));
-        goto done;
-    }
-
-    // We are all done and there were no errors!
+    // No errors
     result = true;
 
     done:
