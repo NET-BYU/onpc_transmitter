@@ -46,16 +46,16 @@ function upload_data(delay) {
       print("######################### Trying to upload data");
       let ok = MQTT.pub(topic, data, 1);
 
-      if (!ok) {
-        // Try again later
-        print("######################### Unable to upload data -- try again later");
-        upload_data(maxDelay);
-      }
-      else {
+      if (ok) {
         print("######################### Deleting data");
         Queue.remove();
         // Try getting more data
         upload_data(minDelay);
+      }
+      else {
+        // Try again later
+        print("######################### Unable to upload data -- try again later");
+        upload_data(maxDelay);
       }
       print("######################### Done");
     }, null);
@@ -68,16 +68,30 @@ Timer.set(2000 /* 2 sec */, false /* repeat */, function() {
   let startResult = Queue.start();
   print("Result: ", startResult);
 
+  if (!startResult) {
+    print("Unable to start queue!");
+    return;
+  }
+
+  // "Generate" data
   Timer.set(2000 /* 2 sec */, true /* repeat */, function() {
-    print("######################### Adding data to queue");
-    let result = Queue.put(JSON.stringify({
+    print("######################### Publishing data");
+    let data = JSON.stringify({
       pm25: 100,
       pm10: 50,
       rssi: getRssi(),
       sequence: sequence,
       time: Timer.now()
-    }));
-    print("Put result:", result);
+    });
+
+    let ok = MQTT.pub(topic, data, 1);
+
+    if (!ok) {
+      print("######################### Unable to publish data");
+      print("######################### Adding data to queue");
+      let result = Queue.put(data);
+      print("Put result:", result);
+    }
 
     sequence += 1;
   }, null);
