@@ -32,32 +32,32 @@ let maxDelay = 5000;
 
 function upload_data(delay) {
   Timer.set(delay, false, function() {
-    print("######################### Peeking at data");
+    print("%%%%%%%%%%%%%%%%%%%%%%%%%% Peeking at data");
     Queue.peek(function(data) {
       print("Data peeked:", data);
 
       if (!data) {
-        print("######################### No data left, trying again later");
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%% No data left, trying again later");
         upload_data(maxDelay);
         return;
       }
 
       // Valid data -- let's publish it
-      print("######################### Trying to upload data");
+      print("%%%%%%%%%%%%%%%%%%%%%%%%%% Trying to upload data");
       let ok = MQTT.pub(topic, data, 1);
 
       if (ok) {
-        print("######################### Deleting data");
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%% Deleting data");
         Queue.remove();
         // Try getting more data
         upload_data(minDelay);
       }
       else {
         // Try again later
-        print("######################### Unable to upload data -- try again later");
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%% Unable to upload data -- try again later");
         upload_data(maxDelay);
       }
-      print("######################### Done");
+      print("%%%%%%%%%%%%%%%%%%%%%%%%%% Done");
     }, null);
   }, null);
 }
@@ -83,7 +83,7 @@ Timer.set(2000 /* 2 sec */, false /* repeat */, function() {
       sequence: sequence,
       time: Timer.now()
     });
-
+    print(data);
     let ok = MQTT.pub(topic, data, 1);
 
     if (!ok) {

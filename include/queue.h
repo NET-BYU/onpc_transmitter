@@ -9,6 +9,8 @@
 #include "common/json_utils.h"
 #include "common/mg_str.h"
 
+#define FILE_NAME "data"
+
 typedef void (*peek_callback)(char *data, void *userdata);
 
 bool start_queue();
