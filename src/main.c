@@ -15,6 +15,7 @@
 
 #include "mgos_app.h"
 #include "mgos_sys_config.h"
+#include "mgos_system.h"
 #include "mgos_timers.h"
 
 
@@ -49,23 +50,24 @@ void promiscuous_mode(void) {
 
 
 static void inject_timer_cb(void *arg) {
-    // printf("Inject!\n");
-    // packet[56] = 11;
-    wifi_send_pkt_freedom(packet, 57, 0);
+    int beacon_size = (int)arg;
+    int result = wifi_send_pkt_freedom(packet, beacon_size, 0);
+    printf("Result: %d\n", result);
 
     (void) arg;
 }
 
 static void setup_inject_mode_timer_cb(void *arg) {
+    int pause_time = mgos_sys_config_get_onpc_pause_time();
+    int beacon_size = mgos_sys_config_get_onpc_beacon_size();
     printf("Entering inject mode!\n");
-    printf("Pause time: %d\n", mgos_sys_config_get_onpc_pause_time());
-    printf("Beacon size: %d\n", mgos_sys_config_get_onpc_beacon_size());
+    printf("Pause time: %d\n", pause_time);
+    printf("Beacon size: %d\n", beacon_size);
     wifi_set_opmode(STATION_MODE);
     wifi_promiscuous_enable(1);
     wifi_set_channel(11);
 
-
-    mgos_set_timer(50, MGOS_TIMER_REPEAT, inject_timer_cb, NULL);
+    mgos_set_hw_timer(pause_time * 1000, MGOS_TIMER_REPEAT, inject_timer_cb, (void *)beacon_size);
     printf("Done inject mode!\n");
     (void) arg;
 }
@@ -75,10 +77,22 @@ void start_inject_mode(void) {
     mgos_set_timer(10000, 0, setup_inject_mode_timer_cb, NULL);
 }
 
+static void system_monitor_cb(void *arg) {
+    printf("%u\n", mgos_get_free_heap_size());
+
+    (void) arg;
+}
+
+void start_system_monitor(void) {
+    printf("Starting system monitoring!\n");
+    mgos_set_timer(1000, MGOS_TIMER_REPEAT, system_monitor_cb, NULL);
+}
+
 enum mgos_app_init_result mgos_app_init(void) {
     // promiscuous_mode();
     printf("Starting!\n");
     start_inject_mode();
+    start_system_monitor();
     printf("Done!\n");
     return MGOS_APP_INIT_SUCCESS;
 }
