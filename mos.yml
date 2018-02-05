@@ -13,6 +13,8 @@ config_schema:
   - ["mqtt.enable", true]
   - ["mqtt.server", "broker-prisms-p1.bmi.utah.edu:8883"]
   - ["mqtt.ssl_ca_cert", "prisms-broker.crt"]
+  - ["wifi.ap.enable", false]
+  - ["wifi.sta.enable", false]
 
 includes:
   - include
