@@ -8,8 +8,6 @@ load('api_timer.js');
 let led = Cfg.get('pins.led');
 let getRssi = ffi('int wifi_station_get_rssi(void)');
 
-let sequence = 0;
-
 
 let getInfo = function() {
   return JSON.stringify({
