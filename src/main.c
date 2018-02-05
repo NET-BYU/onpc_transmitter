@@ -68,7 +68,7 @@ static void setup_inject_mode_timer_cb(void *arg) {
 
 void start_inject_mode(void) {
     printf("Starting inject mode!\n");
-    mgos_set_timer(2000, 0, setup_inject_mode_timer_cb, NULL);
+    mgos_set_timer(10000, 0, setup_inject_mode_timer_cb, NULL);
 }
 
 enum mgos_app_init_result mgos_app_init(void) {
