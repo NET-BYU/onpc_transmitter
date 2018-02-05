@@ -8,11 +8,10 @@ modules_version: ${mos.version}
 mongoose_os_version: ${mos.version}
 
 config_schema:
-  - ["pins", "o", {title: "Pins layout"}]
-  - ["pins.led", "i", 2, {title: "LED GPIO pin"}]
-  - ["mqtt.enable", true]
-  - ["mqtt.server", "broker-prisms-p1.bmi.utah.edu:8883"]
-  - ["mqtt.ssl_ca_cert", "prisms-broker.crt"]
+  - ["onpc", "o", {"title": "ONPC app settings"}]
+  - ["onpc.pause_time", "i", 50, {"title": "Pause between transmissions (ms)"}]
+  - ["onpc.beacon_size", "i", 57, {"title": "Size of beacon frame (bytes)"}]
+  # Important configuration for app
   - ["wifi.ap.enable", false]
   - ["wifi.sta.enable", false]
 

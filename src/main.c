@@ -12,8 +12,10 @@
 #endif
 
 #include "common/cs_dbg.h"
-#include "mgos_timers.h"
+
 #include "mgos_app.h"
+#include "mgos_sys_config.h"
+#include "mgos_timers.h"
 
 
 uint8_t packet[128] = { 0x80, 0x00, 0x00, 0x00,
@@ -56,6 +58,8 @@ static void inject_timer_cb(void *arg) {
 
 static void setup_inject_mode_timer_cb(void *arg) {
     printf("Entering inject mode!\n");
+    printf("Pause time: %d\n", mgos_sys_config_get_onpc_pause_time());
+    printf("Beacon size: %d\n", mgos_sys_config_get_onpc_beacon_size());
     wifi_set_opmode(STATION_MODE);
     wifi_promiscuous_enable(1);
     wifi_set_channel(11);
