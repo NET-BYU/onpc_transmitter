@@ -52,9 +52,10 @@ void promiscuous_mode(void) {
 static void inject_timer_cb(void *arg) {
     int beacon_size = (int)arg;
     int result = wifi_send_pkt_freedom(packet, beacon_size, 0);
-    printf("Result: %d\n", result);
 
-    (void) arg;
+    if(result == -1) {
+        printf("ERROR! Unable to inject packet!");
+    }
 }
 
 static void setup_inject_mode_timer_cb(void *arg) {
@@ -66,7 +67,7 @@ static void setup_inject_mode_timer_cb(void *arg) {
     wifi_set_opmode(STATION_MODE);
     wifi_set_channel(11);
 
-    mgos_set_hw_timer(pause_time * 1000, MGOS_TIMER_REPEAT, inject_timer_cb, (void *)beacon_size);
+    mgos_set_hw_timer(pause_time, MGOS_TIMER_REPEAT, inject_timer_cb, (void *)beacon_size);
     printf("Done inject mode!\n");
     (void) arg;
 }
