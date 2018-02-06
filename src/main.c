@@ -34,28 +34,13 @@ uint8_t packet[128] = { 0x80, 0x00, 0x00, 0x00,
                 /*56*/  0x0b};
 
 
-static void promisc_cb(uint8_t *buf, uint16_t len) {
-  printf("got packet: %d bytes\n", (int) len);
-  (void) buf;
-}
-
-void promiscuous_mode(void) {
-    wifi_set_opmode(STATION_MODE);
-    wifi_set_channel(11);
-    wifi_promiscuous_enable(0);
-    wifi_set_promiscuous_rx_cb(promisc_cb);
-    wifi_set_channel(11);
-    wifi_promiscuous_enable(1);
-}
 
 
 static void inject_timer_cb(void *arg) {
     int beacon_size = (int)arg;
     int result = wifi_send_pkt_freedom(packet, beacon_size, 0);
 
-    if(result == -1) {
-        printf("ERROR! Unable to inject packet!");
-    }
+    (void) result;
 }
 
 static void setup_inject_mode_timer_cb(void *arg) {
@@ -77,22 +62,11 @@ void start_inject_mode(void) {
     mgos_set_timer(10000, 0, setup_inject_mode_timer_cb, NULL);
 }
 
-static void system_monitor_cb(void *arg) {
-    printf("%u\n", mgos_get_free_heap_size());
-
-    (void) arg;
-}
-
-void start_system_monitor(void) {
-    printf("Starting system monitoring!\n");
-    mgos_set_timer(1000, MGOS_TIMER_REPEAT, system_monitor_cb, NULL);
-}
 
 enum mgos_app_init_result mgos_app_init(void) {
-    // promiscuous_mode();
     printf("Starting!\n");
     start_inject_mode();
-    start_system_monitor();
     printf("Done!\n");
+
     return MGOS_APP_INIT_SUCCESS;
 }
