@@ -64,7 +64,6 @@ static void setup_inject_mode_timer_cb(void *arg) {
     printf("Pause time: %d\n", pause_time);
     printf("Beacon size: %d\n", beacon_size);
     wifi_set_opmode(STATION_MODE);
-    wifi_promiscuous_enable(1);
     wifi_set_channel(11);
 
     mgos_set_hw_timer(pause_time * 1000, MGOS_TIMER_REPEAT, inject_timer_cb, (void *)beacon_size);
