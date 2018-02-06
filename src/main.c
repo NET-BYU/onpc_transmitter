@@ -43,7 +43,7 @@ static void inject_timer_cb(void *arg) {
     (void) result;
 }
 
-static void setup_inject_mode_timer_cb(void *arg) {
+enum mgos_app_init_result mgos_app_init(void) {
     int pause_time = mgos_sys_config_get_onpc_pause_time();
     int beacon_size = mgos_sys_config_get_onpc_beacon_size();
     printf("Entering inject mode!\n");
@@ -54,19 +54,6 @@ static void setup_inject_mode_timer_cb(void *arg) {
 
     mgos_set_hw_timer(pause_time, MGOS_TIMER_REPEAT, inject_timer_cb, (void *)beacon_size);
     printf("Done inject mode!\n");
-    (void) arg;
-}
-
-void start_inject_mode(void) {
-    printf("Starting inject mode!\n");
-    mgos_set_timer(10000, 0, setup_inject_mode_timer_cb, NULL);
-}
-
-
-enum mgos_app_init_result mgos_app_init(void) {
-    printf("Starting!\n");
-    start_inject_mode();
-    printf("Done!\n");
 
     return MGOS_APP_INIT_SUCCESS;
 }
