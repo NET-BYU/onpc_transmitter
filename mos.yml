@@ -9,7 +9,7 @@ mongoose_os_version: ${mos.version}
 
 config_schema:
   - ["onpc", "o", {"title": "ONPC app settings"}]
-  - ["onpc.pause_time", "i", 2000, {"title": "Pause between transmissions (μs)"}]
+  - ["onpc.pause_time", "i", 682, {"title": "Pause between transmissions (μs)"}]
   - ["onpc.beacon_size", "i", 57, {"title": "Size of beacon frame (bytes)"}]
 
 includes:

@@ -34,13 +34,31 @@ uint8_t packet[128] = { 0x80, 0x00, 0x00, 0x00,
                 /*56*/  0x0b};
 
 
+uint8_t symbol[64] = {1, 1, 1, 1, 1, 1, 0, 1,
+                      0, 1, 0, 1, 1, 0, 0, 1,
+                      1, 0, 1, 1, 1, 0, 1, 1,
+                      0, 1, 0, 0, 1, 0, 0, 1,
+                      1, 1, 0, 0, 0, 1, 0, 1,
+                      1, 1, 1, 0, 0, 1, 0, 1,
+                      0, 0, 0, 1, 1, 0, 0, 0,
+                      0, 1, 0, 0, 0, 0, 0};
+
+uint8_t s_index = 0;
 
 
 static void inject_timer_cb(void *arg) {
     int beacon_size = (int)arg;
-    int result = wifi_send_pkt_freedom(packet, beacon_size, 0);
 
-    (void) result;
+    if(s_index >= 64) {
+        // Nothing left to do
+        return;
+    }
+
+    if(symbol[s_index] == 1) {
+        wifi_send_pkt_freedom(packet, beacon_size, 0);
+    }
+
+    s_index += 1;
 }
 
 enum mgos_app_init_result mgos_app_init(void) {
