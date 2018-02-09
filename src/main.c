@@ -55,6 +55,10 @@ uint8_t symbol[63] = {1, 1, 0, 1, 0, 1, 0, 1,
 
 uint8_t s_index = 0;
 
+unsigned int pause_time = 700;
+unsigned long start_time = 0;
+unsigned long end_time = 0;
+
 static void send_symbol() {
     if(s_index >= 63) {
         // Nothing left to do
@@ -63,6 +67,7 @@ static void send_symbol() {
 
     // Check for two 1 in a row
     if(s_index < 61 && symbol[s_index] == 1 && symbol[s_index + 1] == 1) {
+        start_time = system_get_time();
         // printf("Sending two packets: %u\n", s_index);
         int result = wifi_send_pkt_freedom(two_packet, 114, 0);
 
@@ -72,9 +77,11 @@ static void send_symbol() {
 
         // Increment by 2 because we sent two frames
         s_index += 2;
+        end_time = system_get_time();
     }
     // Check for one 1
     else if(symbol[s_index] == 1) {
+        start_time = system_get_time();
         // printf("Sending one packet: %u\n", s_index);
         int result = wifi_send_pkt_freedom(one_packet, 57, 0);
 
@@ -84,11 +91,14 @@ static void send_symbol() {
 
         // Just sent one frame
         s_index += 1;
+        end_time = system_get_time();
     }
     // Just a 0
     else {
+        // Time between the last end and this start
+        unsigned long diff = pause_time - (end_time - start_time);
         // printf("Sleeping: %u\n", s_index);
-        mgos_usleep(100);
+        mgos_usleep(diff);
 
         // Go to the next chip in the symbol
         s_index += 1;
@@ -124,7 +134,6 @@ enum mgos_app_init_result mgos_app_init(void) {
     printf("Beacon size: %d\n", beacon_size);
 
     mgos_set_timer(3000, 0, start, NULL);
-
 
     return MGOS_APP_INIT_SUCCESS;
 }
