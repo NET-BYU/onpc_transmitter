@@ -136,8 +136,9 @@ unsigned int sequence_length = 0;
 unsigned int done_wait = 100;
 unsigned int pause_time = 700;
 
-uint8_t MAX_SEQUENCE_LENGTH = 30;
+uint8_t MAX_SEQUENCE_LENGTH = 15;
 uint8_t MIN_FRAME_SIZE = 24;
+uint8_t INCREMENT_FRAME_SIZE = 52;
 
 
 static void send_symbol(void *arg) {
@@ -186,7 +187,8 @@ static void send_symbol(void *arg) {
         // printf("~~~~~~~~~~~~~~~~~~~~~Sending frame: %d\n", 57 * sequence_length);
 
         // Sequence length will always be at least 1
-        wifi_send_pkt_freedom(frame, MIN_FRAME_SIZE * sequence_length, 0);
+        wifi_send_pkt_freedom(
+            frame, MIN_FRAME_SIZE + (INCREMENT_FRAME_SIZE * (sequence_length - 1)), 0);
         sequence_length -= 1;
     }
 
