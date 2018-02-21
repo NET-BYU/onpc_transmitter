@@ -157,39 +157,14 @@ static void send_symbol(void *arg) {
         }
     }
 
-    if(sequence_length > 0) {
-        // Already sent a big frame -- do nothing
-        // printf("~~~~~~~~~~~~~~~~~~~~~Already sent big frame: %d %d\n", symbol_index, data_index);
-        sequence_length -= 1;
-    }
-    else if(symbol[symbol_index] != data[data_index]) {
-        // Zero -- do nothing
-        // printf("~~~~~~~~~~~~~~~~~~~~~Zero: %d %d\n", symbol_index, data_index);
+    if(symbol[symbol_index] == data[data_index]) {
+        // Send a frame
+        wifi_send_pkt_freedom(frame, MIN_FRAME_SIZE, 0);
+        // printf("~~~~~~~~~~~~~~~~~~~~~Sending frame: %d\n", MIN_FRAME_SIZE);
     }
     else {
-        // Send a frame
-        // printf("Sending a frame: %d %d\n", symbol_index, data_index);
-
-        // Determine how big of a frame
-        unsigned int symbol_sequence_index = symbol_index;
-        while((symbol_sequence_index < symbol_length) &&
-              (symbol[symbol_sequence_index] == data[data_index])) {
-            symbol_sequence_index += 1;
-        }
-
-        sequence_length = symbol_sequence_index - symbol_index;
-        if(sequence_length > MAX_SEQUENCE_LENGTH) {
-            sequence_length = MAX_SEQUENCE_LENGTH;
-        }
-
-        // printf("symbol_sequence_index: %d\n", symbol_sequence_index);
-        // printf("sequence_length: %d\n", sequence_length);
-        // printf("~~~~~~~~~~~~~~~~~~~~~Sending frame: %d\n", 57 * sequence_length);
-
-        // Sequence length will always be at least 1
-        wifi_send_pkt_freedom(
-            frame, MIN_FRAME_SIZE + (INCREMENT_FRAME_SIZE * (sequence_length - 1)), 0);
-        sequence_length -= 1;
+        // Do nothing
+        // printf("~~~~~~~~~~~~~~~~~~~~~Zero: %d %d\n", symbol_index, data_index);
     }
 
     // Take care of incrementing indexes
