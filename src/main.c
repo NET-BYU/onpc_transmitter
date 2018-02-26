@@ -121,12 +121,18 @@ uint8_t frame[800] = {
     0x84, 0x8b, 0x96, 0x24, 0x30, 0x48, 0x6c, 0x03
 };
 
-uint8_t symbol[15] = {
-    1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0
+uint8_t symbol[3] = {
+    1, 1, 0
 };
+// uint8_t symbol[7] = {
+    // 1, 1, 1, 0, 1, 0, 0
+// };
+// uint8_t symbol[15] = {
+//     1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0
+// };
 unsigned int symbol_length = sizeof(symbol)/sizeof(symbol[0]);
 
-uint8_t data[4] = {1, 0, 1, 1};
+uint8_t data[1] = {1};
 unsigned int data_length = sizeof(data)/sizeof(data[0]);
 
 unsigned int symbol_index = 0;
@@ -134,10 +140,10 @@ unsigned int data_index = 0;
 unsigned int sequence_length = 0;
 
 unsigned int done_wait = 100;
-unsigned int pause_time = 700;
+unsigned int pause_time = 4500;
 
 uint8_t MAX_SEQUENCE_LENGTH = 15;
-uint8_t MIN_FRAME_SIZE = 24;
+unsigned int MIN_FRAME_SIZE = 480;
 uint8_t INCREMENT_FRAME_SIZE = 52;
 
 
