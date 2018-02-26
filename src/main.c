@@ -194,7 +194,7 @@ enum mgos_app_init_result mgos_app_init(void) {
     int beacon_size = mgos_sys_config_get_onpc_beacon_size();
 
     wifi_set_opmode(STATION_MODE);
-    wifi_set_channel(11);
+    wifi_set_channel(6);
 
     printf("Entering inject mode!\n");
     printf("Pause time: %d\n", pause_time);
