@@ -262,13 +262,12 @@ unsigned int symbol_length = sizeof(symbol)/sizeof(symbol[0]);
 unsigned int symbol_index = 0;
 
 unsigned int pause_time = 11540;
-unsigned int MIN_FRAME_SIZE = 1352;
-
+unsigned int frame_size = 1352;
 
 
 static void send_symbol(void *arg) {
     if(symbol[symbol_index]) {
-        wifi_send_pkt_freedom(frame, MIN_FRAME_SIZE, 0);
+        wifi_send_pkt_freedom(frame, frame_size, 0);
     }
 
     symbol_index = (symbol_index + 1) % symbol_length
@@ -284,17 +283,14 @@ static void start(void *arg) {
 }
 
 enum mgos_app_init_result mgos_app_init(void) {
-    // int pause_time = mgos_sys_config_get_onpc_pause_time();
-    // int beacon_size = mgos_sys_config_get_onpc_beacon_size();
+    int channel = mgos_sys_config_get_onpc_channel();
+
+    printf("Setting channel: %d\n", channel);
+    printf("Pause time: %d\n", pause_time);
+    printf("Beacon size: %d\n", frame_size);
 
     wifi_set_opmode(STATION_MODE);
-    wifi_set_channel(10);
-
-    // printf("Entering inject mode!\n");
-    // printf("Pause time: %d\n", pause_time);
-    // printf("Beacon size: %d\n", beacon_size);
-    // printf("Symbol size: %d\n", symbol_length);
-    // printf("Data size: %d\n", data_length);
+    wifi_set_channel(channel);
 
     mgos_set_timer(3000, 0, start, NULL);
 
