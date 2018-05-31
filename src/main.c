@@ -221,27 +221,6 @@ uint8_t frame[1600] = {
     0x84, 0x8b, 0x96, 0x24, 0x30, 0x48, 0x6c, 0x03
 };
 
-
-// uint8_t symbol[3] = {
-//     1, 1, 0
-// };
-// uint8_t symbol[7] = {
-//     1, 1, 1, 0, 1, 0, 0
-// };
-// uint8_t symbol[15] = {
-//     1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0
-// };
-// uint8_t symbol[63] = {
-//     1, 1, 1, 1, 1, 1, 0, 1,
-//     0, 1, 0, 1, 1, 0, 0, 1,
-//     1, 0, 1, 1, 1, 0, 1, 1,
-//     0, 1, 0, 0, 1, 0, 0, 1,
-//     1, 1, 0, 0, 0, 1, 0, 1,
-//     1, 1, 1, 0, 0, 1, 0, 1,
-//     0, 0, 0, 1, 1, 0, 0, 0,
-//     0, 1, 0, 0, 0, 0, 0
-// };
-
 // taps: None
 uint8_t symbol[1023] = {
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 0,
@@ -280,60 +259,19 @@ uint8_t symbol[1023] = {
 
 
 unsigned int symbol_length = sizeof(symbol)/sizeof(symbol[0]);
-
-uint8_t data[1] = {1};
-unsigned int data_length = sizeof(data)/sizeof(data[0]);
-
 unsigned int symbol_index = 0;
-unsigned int data_index = 0;
-unsigned int sequence_length = 0;
-
-unsigned int done_wait = 1023;
 
 unsigned int pause_time = 11540;
 unsigned int MIN_FRAME_SIZE = 1352;
 
-uint8_t MAX_SEQUENCE_LENGTH = 15;
-uint8_t INCREMENT_FRAME_SIZE = 52;
 
 
 static void send_symbol(void *arg) {
-    if(data_index >= data_length) {
-        // if(done_wait > 0) {
-        //     // Wait awhile before starting over
-        //     done_wait -= 1;
-        //     return;
-        // }
-        // else {
-            // Start over
-            done_wait = 1023;
-            symbol_index = 0;
-            data_index = 0;
-            sequence_length = 0;
-        // }
-    }
-
-    if(symbol[symbol_index] == data[data_index]) {
-        // Send a frame
+    if(symbol[symbol_index]) {
         wifi_send_pkt_freedom(frame, MIN_FRAME_SIZE, 0);
-        // printf("~~~~~~~~~~~~~~~~~~~~~Sending frame: %d\n", MIN_FRAME_SIZE);
-    }
-    else {
-        // Do nothing
-        // printf("~~~~~~~~~~~~~~~~~~~~~Zero: %d %d\n", symbol_index, data_index);
     }
 
-    // Take care of incrementing indexes
-    symbol_index += 1;
-
-    if(symbol_index >= symbol_length) {
-        // Done with that symbol so time to go to next bit
-        symbol_index = 0;
-        data_index += 1;
-    }
-
-    // printf("Done: %d %d\n", symbol_index, data_index);
-
+    symbol_index = (symbol_index + 1) % symbol_length
     (void) arg;
 }
 
@@ -346,17 +284,17 @@ static void start(void *arg) {
 }
 
 enum mgos_app_init_result mgos_app_init(void) {
-    int pause_time = mgos_sys_config_get_onpc_pause_time();
-    int beacon_size = mgos_sys_config_get_onpc_beacon_size();
+    // int pause_time = mgos_sys_config_get_onpc_pause_time();
+    // int beacon_size = mgos_sys_config_get_onpc_beacon_size();
 
     wifi_set_opmode(STATION_MODE);
     wifi_set_channel(10);
 
-    printf("Entering inject mode!\n");
-    printf("Pause time: %d\n", pause_time);
-    printf("Beacon size: %d\n", beacon_size);
-    printf("Symbol size: %d\n", symbol_length);
-    printf("Data size: %d\n", data_length);
+    // printf("Entering inject mode!\n");
+    // printf("Pause time: %d\n", pause_time);
+    // printf("Beacon size: %d\n", beacon_size);
+    // printf("Symbol size: %d\n", symbol_length);
+    // printf("Data size: %d\n", data_length);
 
     mgos_set_timer(3000, 0, start, NULL);
 
