@@ -17,6 +17,8 @@
 #include "mgos_sys_config.h"
 #include "mgos_system.h"
 #include "mgos_timers.h"
+#include "mgos_wifi.h"
+
 
 uint8_t frame[1600] = {
     0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff,
@@ -258,6 +260,8 @@ uint8_t symbol[1023] = {
 };
 
 
+static void check_wifi(void *arg);
+
 unsigned int symbol_length = sizeof(symbol)/sizeof(symbol[0]);
 unsigned int symbol_index = 0;
 
@@ -265,6 +269,11 @@ unsigned int pause_time = 11540;
 unsigned int frame_size = 1352;
 
 mgos_timer_id hw_timer_id = 0;
+mgos_timer_id check_timer_id = 0;
+unsigned int disconnected_counter = 0;
+
+unsigned int ONPC_DURATION = 0;
+unsigned int DISCONNECT_DURATION = 0;
 
 
 static void send_symbol(void *arg) {
@@ -287,30 +296,93 @@ static void stop_onpc(void *arg) {
     (void) arg;
 }
 
-static void start_onpc(void *arg) {
+static void start_onpc() {
     printf("Starting ONPC...\n");
     hw_timer_id = mgos_set_hw_timer(pause_time, MGOS_TIMER_REPEAT, send_symbol, NULL);
+}
+
+static void connect_to_wifi(void *arg) {
+    printf("Trying to connect to WiFi again and start WiFi check timer...\n");
+    mgos_wifi_connect();
+    check_timer_id = mgos_set_timer(1000, MGOS_TIMER_REPEAT, check_wifi, NULL);
 
     (void) arg;
 }
 
-static void run_onpc(void *arg) {
-    int duration = (int) arg;
-    printf("Running ONPC for %d ms...\n", duration);
-    start_onpc(NULL);
-    mgos_set_timer(duration, 0, stop_onpc, NULL);
+static void disconnect_from_wifi() {
+    printf("Disconnecting from WiFi and stopping WiFi check timer...\n");
+    mgos_wifi_disconnect();
+    mgos_clear_timer(check_timer_id);
+    check_timer_id = 0;
 }
-enum mgos_app_init_result mgos_app_init(void) {
-    int channel = mgos_sys_config_get_onpc_channel();
 
-    printf("Setting channel: %d\n", channel);
+static void run_onpc(int duration) {
+    printf("Running ONPC for %d ms...\n", duration);
+
+    // Disconnect from WiFi (stop the system from retrying)
+    disconnect_from_wifi();
+
+    // Run ONPC!
+    start_onpc();
+
+    // Set up callback to stop ONPC
+    mgos_set_timer(duration, 0, stop_onpc, NULL);
+
+    // Set up callback to try to connect back to WiFi
+    mgos_set_timer(duration + 1000, 0, connect_to_wifi, NULL);
+}
+
+static void check_wifi(void *arg) {
+    int rssi = mgos_wifi_sta_get_rssi();
+    char *status_str = mgos_wifi_get_status_str();
+    enum mgos_wifi_status status = mgos_wifi_get_status();
+
+    if(status == MGOS_WIFI_DISCONNECTED || status == MGOS_WIFI_CONNECTING) {
+        disconnected_counter += 1;
+    }
+    else {
+        disconnected_counter = 0;
+    }
+
+    printf("RSSI: %d\n", rssi);
+    printf("Status: %s\n", status_str);
+    printf("Disconnected timer: %d\n", disconnected_counter);
+
+    if(disconnected_counter >= DISCONNECT_DURATION) {
+        disconnected_counter = 0;
+        run_onpc(ONPC_DURATION * 1000);
+    }
+
+    printf("\n");
+    free(status_str);
+    (void) arg;
+}
+
+
+static void start(void *arg) {
+    printf("Starting...\n");
+    check_timer_id = mgos_set_timer(1000, MGOS_TIMER_REPEAT, check_wifi, NULL);
+
+    (void) arg;
+}
+
+enum mgos_app_init_result mgos_app_init(void) {
+    // int channel = mgos_sys_config_get_onpc_channel();
+    ONPC_DURATION = mgos_sys_config_get_onpc_duration();
+    DISCONNECT_DURATION = mgos_sys_config_get_onpc_disconnect_duration();
+
+
+    // printf("Setting channel: %d\n", channel);
     printf("Pause time: %d\n", pause_time);
     printf("Beacon size: %d\n", frame_size);
 
-    wifi_set_opmode(STATION_MODE);
-    wifi_set_channel(channel);
+    // wifi_set_opmode(STATION_MODE);
+    // wifi_set_channel(channel);
 
-    mgos_set_timer(3000, 0, run_onpc, (void *) 20000);
+    // mgos_set_timer(3000, 0, run_onpc, (void *) 20000);
+
+    // Allow system to finish connecting
+    mgos_set_timer(10000, 0, start, NULL);
 
     return MGOS_APP_INIT_SUCCESS;
 }

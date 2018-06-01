@@ -10,12 +10,22 @@ mongoose_os_version: ${mos.version}
 config_schema:
   - ["onpc", "o", {"title": "ONPC app settings"}]
   - ["onpc.channel", "i", 10, {"title": "Channel to transmit on"}]
+  - ["onpc.duration", "i", 30, {"title": "Duration to run ONPC (s)"}]
+  - ["onpc.disconnect_duration", "i", 20, {"title": "Amount of time being disconnected before running ONPC (s)"}]
+  - ["wifi.sta.enable", true]
+  - ["wifi.sta.ssid", "dd-wrt"]
+  - ["wifi.sta.pass", "temp"]
+  - ["wifi.ap.enable", false]
 
 includes:
   - include
 
 sources:
   - src
+
+libs:
+  - origin: https://github.com/mongoose-os-libs/mqtt
+  - origin: https://github.com/mongoose-os-libs/wifi
 
 tags:
   - wifi
