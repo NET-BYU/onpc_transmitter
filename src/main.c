@@ -264,24 +264,42 @@ unsigned int symbol_index = 0;
 unsigned int pause_time = 11540;
 unsigned int frame_size = 1352;
 
+mgos_timer_id hw_timer_id = 0;
+
 
 static void send_symbol(void *arg) {
     if(symbol[symbol_index]) {
         wifi_send_pkt_freedom(frame, frame_size, 0);
     }
 
-    symbol_index = (symbol_index + 1) % symbol_length
+    symbol_index = (symbol_index + 1) % symbol_length;
     (void) arg;
 }
 
+static void stop_onpc(void *arg) {
+    printf("Stopping ONPC (%d)...\n", hw_timer_id);
 
-static void start(void *arg) {
-    printf("Starting...\n");
-    mgos_set_hw_timer(pause_time, MGOS_TIMER_REPEAT, send_symbol, NULL);
+    if(hw_timer_id != 0) {
+        mgos_clear_timer(hw_timer_id);
+        hw_timer_id = 0;
+    }
 
     (void) arg;
 }
 
+static void start_onpc(void *arg) {
+    printf("Starting ONPC...\n");
+    hw_timer_id = mgos_set_hw_timer(pause_time, MGOS_TIMER_REPEAT, send_symbol, NULL);
+
+    (void) arg;
+}
+
+static void run_onpc(void *arg) {
+    int duration = (int) arg;
+    printf("Running ONPC for %d ms...\n", duration);
+    start_onpc(NULL);
+    mgos_set_timer(duration, 0, stop_onpc, NULL);
+}
 enum mgos_app_init_result mgos_app_init(void) {
     int channel = mgos_sys_config_get_onpc_channel();
 
@@ -292,7 +310,7 @@ enum mgos_app_init_result mgos_app_init(void) {
     wifi_set_opmode(STATION_MODE);
     wifi_set_channel(channel);
 
-    mgos_set_timer(3000, 0, start, NULL);
+    mgos_set_timer(3000, 0, run_onpc, (void *) 20000);
 
     return MGOS_APP_INIT_SUCCESS;
 }
