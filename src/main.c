@@ -385,10 +385,6 @@ enum mgos_app_init_result mgos_app_init(void) {
     printf("Pause time: %d\n", pause_time);
     printf("Beacon size: %d\n", frame_size);
 
-    // wifi_set_opmode(STATION_MODE);
-    // wifi_set_channel(channel);
-    // printf("Setting channel: %d\n", channel);
-
     // Allow system to finish connecting
     mgos_set_timer(10000, 0, start, NULL);
 
