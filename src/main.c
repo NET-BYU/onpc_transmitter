@@ -14,6 +14,7 @@
 #include "common/cs_dbg.h"
 
 #include "mgos_app.h"
+#include "mgos_gpio.h"
 #include "mgos_sys_config.h"
 #include "mgos_system.h"
 #include "mgos_timers.h"
@@ -275,6 +276,8 @@ unsigned int disconnected_counter = 0;
 unsigned int ONPC_DURATION = 0;
 unsigned int DISCONNECT_DURATION = 0;
 
+unsigned int LED = -1;
+
 
 static void send_symbol(void *arg) {
     if(symbol[symbol_index]) {
@@ -282,6 +285,11 @@ static void send_symbol(void *arg) {
     }
 
     symbol_index = (symbol_index + 1) % symbol_length;
+
+    if (symbol_index % 4 == 0) {
+        mgos_gpio_toggle(LED);
+    }
+
     (void) arg;
 }
 
@@ -339,9 +347,11 @@ static void check_wifi(void *arg) {
 
     if(status == MGOS_WIFI_DISCONNECTED || status == MGOS_WIFI_CONNECTING) {
         disconnected_counter += 1;
+        mgos_gpio_toggle(LED);
     }
     else {
         disconnected_counter = 0;
+        mgos_gpio_write(LED, false);
     }
 
     printf("RSSI: %d\n", rssi);
@@ -358,7 +368,6 @@ static void check_wifi(void *arg) {
     (void) arg;
 }
 
-
 static void start(void *arg) {
     printf("Starting...\n");
     check_timer_id = mgos_set_timer(1000, MGOS_TIMER_REPEAT, check_wifi, NULL);
@@ -367,19 +376,18 @@ static void start(void *arg) {
 }
 
 enum mgos_app_init_result mgos_app_init(void) {
-    // int channel = mgos_sys_config_get_onpc_channel();
     ONPC_DURATION = mgos_sys_config_get_onpc_duration();
     DISCONNECT_DURATION = mgos_sys_config_get_onpc_disconnect_duration();
+    LED = mgos_sys_config_get_onpc_status_led();
 
+    mgos_gpio_set_mode(LED, MGOS_GPIO_MODE_OUTPUT);
 
-    // printf("Setting channel: %d\n", channel);
     printf("Pause time: %d\n", pause_time);
     printf("Beacon size: %d\n", frame_size);
 
     // wifi_set_opmode(STATION_MODE);
     // wifi_set_channel(channel);
-
-    // mgos_set_timer(3000, 0, run_onpc, (void *) 20000);
+    // printf("Setting channel: %d\n", channel);
 
     // Allow system to finish connecting
     mgos_set_timer(10000, 0, start, NULL);
