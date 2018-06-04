@@ -15,7 +15,7 @@ config_schema:
   - ["onpc.status_led", "i", 2, {"title": "LED used for ONPC status"}]
   - ["wifi.sta.enable", true]
   - ["wifi.sta.ssid", "dd-wrt"]
-  - ["wifi.sta.pass", "temp"]
+  - ["wifi.sta.pass", "onpc_rocks"]
   - ["wifi.ap.enable", false]
 
 includes:
