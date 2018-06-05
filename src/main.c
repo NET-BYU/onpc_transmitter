@@ -266,8 +266,8 @@ static void check_wifi(void *arg);
 unsigned int symbol_length = sizeof(symbol)/sizeof(symbol[0]);
 unsigned int symbol_index = 0;
 
-unsigned int pause_time = 11540;
-unsigned int frame_size = 1352;
+unsigned int pause_time = 13424;
+unsigned int frame_size = 1400;
 
 mgos_timer_id hw_timer_id = 0;
 mgos_timer_id check_timer_id = 0;
