@@ -20,6 +20,8 @@
 #include "mgos_timers.h"
 #include "mgos_wifi.h"
 
+#include "mgos_service_config.h"
+
 
 uint8_t frame[1600] = {
     0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff,
@@ -376,14 +378,21 @@ static void start(void *arg) {
 }
 
 enum mgos_app_init_result mgos_app_init(void) {
+    mgos_gpio_write(LED, false);
+    mgos_rpc_service_config_init();
+
     ONPC_DURATION = mgos_sys_config_get_onpc_duration();
     DISCONNECT_DURATION = mgos_sys_config_get_onpc_disconnect_duration();
     LED = mgos_sys_config_get_onpc_status_led();
 
     mgos_gpio_set_mode(LED, MGOS_GPIO_MODE_OUTPUT);
 
-    printf("Pause time: %d\n", pause_time);
-    printf("Beacon size: %d\n", frame_size);
+    printf("-----------------------------------\n");
+    printf("Pause time: %d us\n", pause_time);
+    printf("Beacon size: %d bytes\n", frame_size);
+    printf("ONPC duration: %d s\n", ONPC_DURATION);
+    printf("Disconnect duration: %d s\n", DISCONNECT_DURATION);
+    printf("-----------------------------------\n");
 
     // Allow system to finish connecting
     mgos_set_timer(10000, 0, start, NULL);
