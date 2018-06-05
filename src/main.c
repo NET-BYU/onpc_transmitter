@@ -345,7 +345,7 @@ static void check_wifi(void *arg) {
     char *status_str = mgos_wifi_get_status_str();
     enum mgos_wifi_status status = mgos_wifi_get_status();
 
-    if(status == MGOS_WIFI_DISCONNECTED || status == MGOS_WIFI_CONNECTING) {
+    if(status == MGOS_WIFI_DISCONNECTED || status == MGOS_WIFI_CONNECTING || rssi == 0) {
         disconnected_counter += 1;
         mgos_gpio_toggle(LED);
     }
