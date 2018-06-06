@@ -12,6 +12,7 @@ config_schema:
   - ["onpc.duration", "i", 120, {"title": "Duration to run ONPC (s)"}]
   - ["onpc.disconnect_duration", "i", 5, {"title": "Amount of time being disconnected before running ONPC (s)"}]
   - ["onpc.status_led", "i", 2, {"title": "LED used for ONPC status"}]
+  - ["onpc.symbol", "i", 1, {"title": Which symbol to transmit"}]
   - ["wifi.sta.enable", true]
   - ["wifi.sta.ssid", "dd-wrt"]
   - ["wifi.sta.pass", "onpc_rocks"]
