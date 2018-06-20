@@ -18,6 +18,7 @@
 #include "mgos_sys_config.h"
 #include "mgos_system.h"
 #include "mgos_timers.h"
+#include "mgos_utils.h"
 #include "mgos_wifi.h"
 
 #include "mgos_service_config.h"
@@ -389,6 +390,10 @@ static void start_onpc() {
 
 static void connect_to_wifi(void *arg) {
     printf("Trying to connect to WiFi again and start WiFi check timer...\n");
+
+    DISCONNECT_DURATION = mgos_rand_range(10, 60);
+    printf("Disconnect duration: %d\n", DISCONNECT_DURATION);
+
     mgos_wifi_connect();
     check_timer_id = mgos_set_timer(1000, MGOS_TIMER_REPEAT, check_wifi, NULL);
 
@@ -434,7 +439,7 @@ static void check_wifi(void *arg) {
 
     printf("RSSI: %d\n", rssi);
     printf("Status: %s\n", status_str);
-    printf("Disconnected timer: %d\n", disconnected_counter);
+    printf("Disconnected timer: %d (%d)\n", disconnected_counter, DISCONNECT_DURATION);
 
     if(disconnected_counter >= DISCONNECT_DURATION) {
         disconnected_counter = 0;
@@ -448,6 +453,10 @@ static void check_wifi(void *arg) {
 
 static void start(void *arg) {
     printf("Starting...\n");
+
+    DISCONNECT_DURATION = mgos_rand_range(10, 60);
+    printf("Disconnect duration: %d\n", DISCONNECT_DURATION);
+
     check_timer_id = mgos_set_timer(1000, MGOS_TIMER_REPEAT, check_wifi, NULL);
 
     (void) arg;
