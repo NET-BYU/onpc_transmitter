@@ -354,6 +354,8 @@ unsigned int disconnected_counter = 0;
 
 unsigned int ONPC_DURATION = 0;
 unsigned int DISCONNECT_DURATION = 0;
+unsigned int DISCONNECT_DURATION_MIN = 0;
+unsigned int DISCONNECT_DURATION_MAX = 0;
 
 unsigned int LED = -1;
 
@@ -391,7 +393,7 @@ static void start_onpc() {
 static void connect_to_wifi(void *arg) {
     printf("Trying to connect to WiFi again and start WiFi check timer...\n");
 
-    DISCONNECT_DURATION = mgos_rand_range(10, 60);
+    DISCONNECT_DURATION = mgos_rand_range(DISCONNECT_DURATION_MIN, DISCONNECT_DURATION_MAX);
     printf("Disconnect duration: %d\n", DISCONNECT_DURATION);
 
     mgos_wifi_connect();
@@ -454,7 +456,7 @@ static void check_wifi(void *arg) {
 static void start(void *arg) {
     printf("Starting...\n");
 
-    DISCONNECT_DURATION = mgos_rand_range(10, 60);
+    DISCONNECT_DURATION = mgos_rand_range(DISCONNECT_DURATION_MIN, DISCONNECT_DURATION_MAX);
     printf("Disconnect duration: %d\n", DISCONNECT_DURATION);
 
     check_timer_id = mgos_set_timer(1000, MGOS_TIMER_REPEAT, check_wifi, NULL);
@@ -468,7 +470,8 @@ enum mgos_app_init_result mgos_app_init(void) {
 
     // Get configuration parameters
     ONPC_DURATION = mgos_sys_config_get_onpc_duration();
-    DISCONNECT_DURATION = mgos_sys_config_get_onpc_disconnect_duration();
+    DISCONNECT_DURATION_MIN = mgos_sys_config_get_onpc_disconnect_duration_min();
+    DISCONNECT_DURATION_MAX = mgos_sys_config_get_onpc_disconnect_duration_max();
     LED = mgos_sys_config_get_onpc_status_led();
     unsigned int transmitter_symbol = mgos_sys_config_get_onpc_symbol();
 
@@ -497,7 +500,8 @@ enum mgos_app_init_result mgos_app_init(void) {
     printf("Pause time: %d us\n", pause_time);
     printf("Beacon size: %d bytes\n", frame_size);
     printf("ONPC duration: %d s\n", ONPC_DURATION);
-    printf("Disconnect duration: %d s\n", DISCONNECT_DURATION);
+    printf("Min disconnect duration: %d s\n", DISCONNECT_DURATION_MIN);
+    printf("Max disconnect duration: %d s\n", DISCONNECT_DURATION_MAX);
     printf("-----------------------------------\n");
 
     // Allow system to finish connecting
