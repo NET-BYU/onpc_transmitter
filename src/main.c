@@ -16,6 +16,7 @@
 #include "mgos_app.h"
 #include "mgos_gpio.h"
 #include "mgos_mongoose.h"
+#include "mgos_mqtt.h"
 #include "mgos_sys_config.h"
 #include "mgos_system.h"
 #include "mgos_timers.h"
@@ -365,10 +366,6 @@ unsigned int DISCONNECT_DURATION_MAX = 0;
 unsigned int LED = -1;
 unsigned int SEND_DATA = 0;
 
-static struct mg_connection* udp_nc = NULL;
-static const char* UDP_SERVER = "udp://192.168.1.120:8080";
-static const char* str_udp_data = "foobar";
-
 
 static void send_symbol(void *arg) {
     if (symbol_index == 0) {
@@ -474,9 +471,16 @@ static void check_wifi(void *arg) {
     }
 
     if(SEND_DATA && status == MGOS_WIFI_IP_ACQUIRED) {
-        printf("Try sending data\n");
-        mg_send(udp_nc, str_udp_data, sizeof(str_udp_data));
+        struct mg_connection *c = mgos_mqtt_get_global_conn();
 
+        if(c != NULL) {
+            printf("Sending data\n");
+            mg_mqtt_publish(c, mgos_sys_config_get_mqtt_pub(), mgos_mqtt_get_packet_id(),
+                            MG_MQTT_QOS(0), "stayin' alive", 13);
+        }
+        else {
+            printf("Unable to send data\n");
+        }
     }
 
     printf("RSSI: %d\n", rssi);
@@ -504,35 +508,19 @@ static void start(void *arg) {
     (void) arg;
 }
 
-void onpc_udp_connection_handler(struct mg_connection *nc, int ev, void *ev_data, void *user_data) {
-    if (ev != MG_EV_POLL) {
-        LOG(LL_INFO, ("udp nc event %d", ev));
-    }
-    switch (ev) {
-        case MG_EV_CLOSE: {
-            LOG(LL_INFO, ("%p Connection closed", nc));
-            if (nc == udp_nc) {
-                udp_nc = onpc_udp_connect();
-            }
-            break;
-        }
-        case MG_EV_RECV: {
-            LOG(LL_INFO, ("%d bytes", nc->recv_mbuf.len));
-            mbuf_remove(&nc->recv_mbuf, nc->recv_mbuf.len);
-        }
-    }
 
+static void ev_handler(struct mg_connection *c, int ev, void *p,
+                       void *user_data) {
+    struct mg_mqtt_message *msg = (struct mg_mqtt_message *) p;
+
+    // if (ev != MG_EV_POLL) {
+    //     LOG(LL_INFO, ("MQTT ev: %d", ev));
+    // }
+
+    (void) c;
+    (void) ev;
+    (void) msg;
     (void) user_data;
-    (void) nc;
-    (void) ev_data;
-}
-
-struct mg_connection* onpc_udp_connect() {
-    struct mg_connection* nc = mg_connect(mgos_get_mgr(), UDP_SERVER, onpc_udp_connection_handler, NULL);
-    if (nc == NULL) {
-        LOG(LL_ERROR, ("unable to create UDP socket"));
-    }
-    return nc;
 }
 
 enum mgos_app_init_result mgos_app_init(void) {
@@ -554,7 +542,7 @@ enum mgos_app_init_result mgos_app_init(void) {
     }
 
     // Set up UDP options
-    SEND_DATA = mgos_sys_config_get_udp_enable();
+    SEND_DATA = mgos_sys_config_get_mqtt_enable();
 
     // Set up LED
     LED = mgos_sys_config_get_onpc_status_led();
@@ -587,11 +575,7 @@ enum mgos_app_init_result mgos_app_init(void) {
     printf("Send data: %d\n", SEND_DATA);
     printf("-----------------------------------\n");
 
-
-    udp_nc = onpc_udp_connect();
-    if(!udp_nc) {
-        printf("Unable to set up UDP socket!\n");
-    }
+    mgos_mqtt_add_global_handler(ev_handler, NULL);
 
     // Allow system to finish connecting
     mgos_set_timer(mgos_sys_config_get_onpc_delay() * 1000, 0, start, NULL);
