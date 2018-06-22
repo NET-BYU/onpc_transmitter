@@ -341,9 +341,12 @@ uint8_t symbol_3[1023] = {
 uint8_t *symbol = NULL;
 
 static void check_wifi(void *arg);
+static void stop_onpc(void *arg);
+static void connect_to_wifi(void *arg);
 
 unsigned int symbol_length = sizeof(symbol_1)/sizeof(symbol_1[0]);
 unsigned int symbol_index = 0;
+unsigned int num_symbols = 0;
 
 unsigned int pause_time = 13424;
 unsigned int frame_size = 1400;
@@ -352,7 +355,7 @@ mgos_timer_id hw_timer_id = 0;
 mgos_timer_id check_timer_id = 0;
 unsigned int disconnected_counter = 0;
 
-unsigned int ONPC_DURATION = 0;
+unsigned int ONPC_SYMBOLS = 0;
 unsigned int DISCONNECT_DURATION = 0;
 unsigned int DISCONNECT_DURATION_MIN = 0;
 unsigned int DISCONNECT_DURATION_MAX = 0;
@@ -361,6 +364,30 @@ unsigned int LED = -1;
 
 
 static void send_symbol(void *arg) {
+    if (symbol_index == 0) {
+        // We are starting a new symbol
+        printf("Starting symbol %d (%d)\n", num_symbols + 1, ONPC_SYMBOLS);
+
+        if (num_symbols >= ONPC_SYMBOLS) {
+            // We are done sending symbols
+            printf("Done with symbols. Stopping...\n");
+
+            // Stop callback
+            stop_onpc(NULL);
+
+            // Reset state
+            num_symbols = 0;
+
+            // Try to connect to WiFi in one second
+            mgos_set_timer(1000, 0, connect_to_wifi, NULL);
+
+            return;
+        }
+        else {
+            num_symbols += 1;
+        }
+    }
+
     if(symbol[symbol_index]) {
         wifi_send_pkt_freedom(frame, frame_size, 0);
     }
@@ -409,8 +436,8 @@ static void disconnect_from_wifi() {
     check_timer_id = 0;
 }
 
-static void run_onpc(int duration) {
-    printf("Running ONPC for %d ms...\n", duration);
+static void run_onpc() {
+    printf("Running ONPC for %d symbols...\n", ONPC_SYMBOLS);
 
     // Disconnect from WiFi (stop the system from retrying)
     disconnect_from_wifi();
@@ -419,10 +446,10 @@ static void run_onpc(int duration) {
     start_onpc();
 
     // Set up callback to stop ONPC
-    mgos_set_timer(duration, 0, stop_onpc, NULL);
+    // mgos_set_timer(duration, 0, stop_onpc, NULL);
 
     // Set up callback to try to connect back to WiFi
-    mgos_set_timer(duration + 1000, 0, connect_to_wifi, NULL);
+    // mgos_set_timer(duration + 1000, 0, connect_to_wifi, NULL);
 }
 
 static void check_wifi(void *arg) {
@@ -445,7 +472,7 @@ static void check_wifi(void *arg) {
 
     if(disconnected_counter >= DISCONNECT_DURATION) {
         disconnected_counter = 0;
-        run_onpc(ONPC_DURATION * 1000);
+        run_onpc();
     }
 
     printf("\n");
@@ -469,7 +496,7 @@ enum mgos_app_init_result mgos_app_init(void) {
     mgos_rpc_service_config_init();
 
     // Get configuration parameters
-    ONPC_DURATION = mgos_sys_config_get_onpc_duration();
+    ONPC_SYMBOLS = mgos_sys_config_get_onpc_symbols();
     DISCONNECT_DURATION_MIN = mgos_sys_config_get_onpc_disconnect_duration_min();
     DISCONNECT_DURATION_MAX = mgos_sys_config_get_onpc_disconnect_duration_max();
     LED = mgos_sys_config_get_onpc_status_led();
@@ -499,7 +526,7 @@ enum mgos_app_init_result mgos_app_init(void) {
 
     printf("Pause time: %d us\n", pause_time);
     printf("Beacon size: %d bytes\n", frame_size);
-    printf("ONPC duration: %d s\n", ONPC_DURATION);
+    printf("ONPC symbols: %d\n", ONPC_SYMBOLS);
     printf("Min disconnect duration: %d s\n", DISCONNECT_DURATION_MIN);
     printf("Max disconnect duration: %d s\n", DISCONNECT_DURATION_MAX);
     printf("-----------------------------------\n");
