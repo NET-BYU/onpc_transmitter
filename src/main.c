@@ -15,6 +15,7 @@
 
 #include "mgos_app.h"
 #include "mgos_gpio.h"
+#include "mgos_mongoose.h"
 #include "mgos_sys_config.h"
 #include "mgos_system.h"
 #include "mgos_timers.h"
@@ -343,6 +344,7 @@ uint8_t *symbol = NULL;
 static void check_wifi(void *arg);
 static void stop_onpc(void *arg);
 static void connect_to_wifi(void *arg);
+struct mg_connection* onpc_udp_connect();
 
 unsigned int symbol_length = sizeof(symbol_1)/sizeof(symbol_1[0]);
 unsigned int symbol_index = 0;
@@ -361,6 +363,11 @@ unsigned int DISCONNECT_DURATION_MIN = 0;
 unsigned int DISCONNECT_DURATION_MAX = 0;
 
 unsigned int LED = -1;
+unsigned int SEND_DATA = 0;
+
+static struct mg_connection* udp_nc = NULL;
+static const char* UDP_SERVER = "udp://192.168.1.120:8080";
+static const char* str_udp_data = "foobar";
 
 
 static void send_symbol(void *arg) {
@@ -466,6 +473,12 @@ static void check_wifi(void *arg) {
         mgos_gpio_write(LED, false);
     }
 
+    if(SEND_DATA && status == MGOS_WIFI_IP_ACQUIRED) {
+        printf("Try sending data\n");
+        mg_send(udp_nc, str_udp_data, sizeof(str_udp_data));
+
+    }
+
     printf("RSSI: %d\n", rssi);
     printf("Status: %s\n", status_str);
     printf("Disconnected timer: %d (%d)\n", disconnected_counter, DISCONNECT_DURATION);
@@ -491,6 +504,37 @@ static void start(void *arg) {
     (void) arg;
 }
 
+void onpc_udp_connection_handler(struct mg_connection *nc, int ev, void *ev_data, void *user_data) {
+    if (ev != MG_EV_POLL) {
+        LOG(LL_INFO, ("udp nc event %d", ev));
+    }
+    switch (ev) {
+        case MG_EV_CLOSE: {
+            LOG(LL_INFO, ("%p Connection closed", nc));
+            if (nc == udp_nc) {
+                udp_nc = onpc_udp_connect();
+            }
+            break;
+        }
+        case MG_EV_RECV: {
+            LOG(LL_INFO, ("%d bytes", nc->recv_mbuf.len));
+            mbuf_remove(&nc->recv_mbuf, nc->recv_mbuf.len);
+        }
+    }
+
+    (void) user_data;
+    (void) nc;
+    (void) ev_data;
+}
+
+struct mg_connection* onpc_udp_connect() {
+    struct mg_connection* nc = mg_connect(mgos_get_mgr(), UDP_SERVER, onpc_udp_connection_handler, NULL);
+    if (nc == NULL) {
+        LOG(LL_ERROR, ("unable to create UDP socket"));
+    }
+    return nc;
+}
+
 enum mgos_app_init_result mgos_app_init(void) {
     // Set up RPC for config changes
     mgos_rpc_service_config_init();
@@ -508,6 +552,9 @@ enum mgos_app_init_result mgos_app_init(void) {
         DISCONNECT_DURATION_MIN = mgos_sys_config_get_onpc_disconnect_duration();
         DISCONNECT_DURATION_MAX = mgos_sys_config_get_onpc_disconnect_duration();
     }
+
+    // Set up UDP options
+    SEND_DATA = mgos_sys_config_get_udp_enable();
 
     // Set up LED
     LED = mgos_sys_config_get_onpc_status_led();
@@ -537,7 +584,14 @@ enum mgos_app_init_result mgos_app_init(void) {
     printf("ONPC symbols: %d\n", ONPC_SYMBOLS);
     printf("Min disconnect duration: %d s\n", DISCONNECT_DURATION_MIN);
     printf("Max disconnect duration: %d s\n", DISCONNECT_DURATION_MAX);
+    printf("Send data: %d\n", SEND_DATA);
     printf("-----------------------------------\n");
+
+
+    udp_nc = onpc_udp_connect();
+    if(!udp_nc) {
+        printf("Unable to set up UDP socket!\n");
+    }
 
     // Allow system to finish connecting
     mgos_set_timer(mgos_sys_config_get_onpc_delay() * 1000, 0, start, NULL);
