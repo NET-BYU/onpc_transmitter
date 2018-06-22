@@ -497,12 +497,19 @@ enum mgos_app_init_result mgos_app_init(void) {
 
     // Get configuration parameters
     ONPC_SYMBOLS = mgos_sys_config_get_onpc_symbols();
-    DISCONNECT_DURATION_MIN = mgos_sys_config_get_onpc_disconnect_duration_min();
-    DISCONNECT_DURATION_MAX = mgos_sys_config_get_onpc_disconnect_duration_max();
-    LED = mgos_sys_config_get_onpc_status_led();
     unsigned int transmitter_symbol = mgos_sys_config_get_onpc_symbol();
 
+    if (mgos_sys_config_get_onpc_mac_enable()) {
+        DISCONNECT_DURATION_MIN = mgos_sys_config_get_onpc_mac_disconnect_duration_min();
+        DISCONNECT_DURATION_MAX = mgos_sys_config_get_onpc_mac_disconnect_duration_max();
+    }
+    else {
+        DISCONNECT_DURATION_MIN = mgos_sys_config_get_onpc_disconnect_duration();
+        DISCONNECT_DURATION_MAX = mgos_sys_config_get_onpc_disconnect_duration();
+    }
+
     // Set up LED
+    LED = mgos_sys_config_get_onpc_status_led();
     mgos_gpio_set_mode(LED, MGOS_GPIO_MODE_OUTPUT);
     mgos_gpio_write(LED, false);
 

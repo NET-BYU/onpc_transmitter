@@ -10,10 +10,14 @@ mongoose_os_version: ${mos.version}
 config_schema:
   - ["onpc", "o", {"title": "ONPC app settings"}]
   - ["onpc.symbols", "i", 3, {"title": "Number of symbols to transmit"}]
-  - ["onpc.disconnect_duration_min", "i", 1, {"title": "The minimum amount of time being disconnected before running ONPC (s)"}]
-  - ["onpc.disconnect_duration_max", "i", 60, {"title": "The maximum amount of time being disconnected before running ONPC (s)"}]
   - ["onpc.status_led", "i", 2, {"title": "LED used for ONPC status"}]
   - ["onpc.symbol", "i", 1, {"title": Which symbol to transmit"}]
+  - ["onpc.disconnect_duration", "i", 1, {"title": "The amount of time being disconnected before running ONPC (s) -- Only used if MAC is disabled"}]
+  - ["onpc.mac", "o", {"title": "ONPC MAC settings"}]
+  - ["onpc.mac.enable", "b", true, {"title": "Enable ONPC MAC"}]
+  - ["onpc.mac.disconnect_duration_min", "i", 1, {"title": "The minimum amount of time being disconnected before running ONPC (s)"}]
+  - ["onpc.mac.disconnect_duration_max", "i", 60, {"title": "The maximum amount of time being disconnected before running ONPC (s)"}]
+
   - ["wifi.sta.enable", true]
   - ["wifi.sta.ssid", "dd-wrt"]
   - ["wifi.sta.pass", "onpc_rocks"]
