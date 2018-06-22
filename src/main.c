@@ -495,10 +495,11 @@ enum mgos_app_init_result mgos_app_init(void) {
     // Set up RPC for config changes
     mgos_rpc_service_config_init();
 
-    // Get configuration parameters
+    // Get ONPC configuration options
     ONPC_SYMBOLS = mgos_sys_config_get_onpc_symbols();
     unsigned int transmitter_symbol = mgos_sys_config_get_onpc_symbol();
 
+    // Set up MAC
     if (mgos_sys_config_get_onpc_mac_enable()) {
         DISCONNECT_DURATION_MIN = mgos_sys_config_get_onpc_mac_disconnect_duration_min();
         DISCONNECT_DURATION_MAX = mgos_sys_config_get_onpc_mac_disconnect_duration_max();
@@ -539,7 +540,7 @@ enum mgos_app_init_result mgos_app_init(void) {
     printf("-----------------------------------\n");
 
     // Allow system to finish connecting
-    mgos_set_timer(10000, 0, start, NULL);
+    mgos_set_timer(mgos_sys_config_get_onpc_delay() * 1000, 0, start, NULL);
 
     return MGOS_APP_INIT_SUCCESS;
 }
