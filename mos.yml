@@ -8,11 +8,22 @@ modules_version: ${mos.version}
 mongoose_os_version: ${mos.version}
 
 config_schema:
-  - ["onpc", "o", {"title": "ONPC app settings"}]
-  - ["onpc.duration", "i", 120, {"title": "Duration to run ONPC (s)"}]
-  - ["onpc.disconnect_duration", "i", 5, {"title": "Amount of time being disconnected before running ONPC (s)"}]
+  - ["onpc", "o", {"title": "ONPC settings"}]
+  - ["onpc.delay", "i", 5, {"title": "Number of seconds to delay starting ONPC"}]
+  - ["onpc.symbols", "i", 3, {"title": "Number of symbols to transmit"}]
   - ["onpc.status_led", "i", 2, {"title": "LED used for ONPC status"}]
   - ["onpc.symbol", "i", 1, {"title": Which symbol to transmit"}]
+  - ["onpc.disconnect_duration", "i", 30, {"title": "The amount of time being disconnected before running ONPC (s) -- Only used if MAC is disabled"}]
+
+  - ["onpc.mac", "o", {"title": "ONPC MAC settings"}]
+  - ["onpc.mac.enable", "b", false, {"title": "Enable ONPC MAC"}]
+  - ["onpc.mac.disconnect_duration_min", "i", 1, {"title": "The minimum amount of time being disconnected before running ONPC (s)"}]
+  - ["onpc.mac.disconnect_duration_max", "i", 60, {"title": "The maximum amount of time being disconnected before running ONPC (s)"}]
+
+  - ["mqtt.enable", true]
+  - ["mqtt.server", "192.168.1.120:1883"]
+  - ["mqtt.pub", "s", "/status", {title: "Publish topic"}]
+
   - ["wifi.sta.enable", true]
   - ["wifi.sta.ssid", "dd-wrt"]
   - ["wifi.sta.pass", "onpc_rocks"]
@@ -25,6 +36,7 @@ sources:
   - src
 
 libs:
+  - origin: https://github.com/mongoose-os-libs/mqtt
   - origin: https://github.com/mongoose-os-libs/rpc-uart
   - origin: https://github.com/mongoose-os-libs/wifi
 

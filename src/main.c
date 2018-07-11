@@ -15,9 +15,12 @@
 
 #include "mgos_app.h"
 #include "mgos_gpio.h"
+#include "mgos_mongoose.h"
+#include "mgos_mqtt.h"
 #include "mgos_sys_config.h"
 #include "mgos_system.h"
 #include "mgos_timers.h"
+#include "mgos_utils.h"
 #include "mgos_wifi.h"
 
 #include "mgos_service_config.h"
@@ -340,9 +343,13 @@ uint8_t symbol_3[1023] = {
 uint8_t *symbol = NULL;
 
 static void check_wifi(void *arg);
+static void stop_onpc(void *arg);
+static void connect_to_wifi(void *arg);
+struct mg_connection* onpc_udp_connect();
 
 unsigned int symbol_length = sizeof(symbol_1)/sizeof(symbol_1[0]);
 unsigned int symbol_index = 0;
+unsigned int num_symbols = 0;
 
 unsigned int pause_time = 13424;
 unsigned int frame_size = 1400;
@@ -351,13 +358,40 @@ mgos_timer_id hw_timer_id = 0;
 mgos_timer_id check_timer_id = 0;
 unsigned int disconnected_counter = 0;
 
-unsigned int ONPC_DURATION = 0;
+unsigned int ONPC_SYMBOLS = 0;
 unsigned int DISCONNECT_DURATION = 0;
+unsigned int DISCONNECT_DURATION_MIN = 0;
+unsigned int DISCONNECT_DURATION_MAX = 0;
 
 unsigned int LED = -1;
+unsigned int SEND_DATA = 0;
 
 
 static void send_symbol(void *arg) {
+    if (symbol_index == 0) {
+        // We are starting a new symbol
+        printf("Starting symbol %d (%d)\n", num_symbols + 1, ONPC_SYMBOLS);
+
+        if (num_symbols >= ONPC_SYMBOLS) {
+            // We are done sending symbols
+            printf("Done with symbols. Stopping...\n");
+
+            // Stop callback
+            stop_onpc(NULL);
+
+            // Reset state
+            num_symbols = 0;
+
+            // Try to connect to WiFi in one second
+            mgos_set_timer(1000, 0, connect_to_wifi, NULL);
+
+            return;
+        }
+        else {
+            num_symbols += 1;
+        }
+    }
+
     if(symbol[symbol_index]) {
         wifi_send_pkt_freedom(frame, frame_size, 0);
     }
@@ -389,6 +423,10 @@ static void start_onpc() {
 
 static void connect_to_wifi(void *arg) {
     printf("Trying to connect to WiFi again and start WiFi check timer...\n");
+
+    DISCONNECT_DURATION = mgos_rand_range(DISCONNECT_DURATION_MIN, DISCONNECT_DURATION_MAX);
+    printf("Disconnect duration: %d\n", DISCONNECT_DURATION);
+
     mgos_wifi_connect();
     check_timer_id = mgos_set_timer(1000, MGOS_TIMER_REPEAT, check_wifi, NULL);
 
@@ -402,8 +440,8 @@ static void disconnect_from_wifi() {
     check_timer_id = 0;
 }
 
-static void run_onpc(int duration) {
-    printf("Running ONPC for %d ms...\n", duration);
+static void run_onpc() {
+    printf("Running ONPC for %d symbols...\n", ONPC_SYMBOLS);
 
     // Disconnect from WiFi (stop the system from retrying)
     disconnect_from_wifi();
@@ -412,10 +450,10 @@ static void run_onpc(int duration) {
     start_onpc();
 
     // Set up callback to stop ONPC
-    mgos_set_timer(duration, 0, stop_onpc, NULL);
+    // mgos_set_timer(duration, 0, stop_onpc, NULL);
 
     // Set up callback to try to connect back to WiFi
-    mgos_set_timer(duration + 1000, 0, connect_to_wifi, NULL);
+    // mgos_set_timer(duration + 1000, 0, connect_to_wifi, NULL);
 }
 
 static void check_wifi(void *arg) {
@@ -432,13 +470,26 @@ static void check_wifi(void *arg) {
         mgos_gpio_write(LED, false);
     }
 
+    if(SEND_DATA && status == MGOS_WIFI_IP_ACQUIRED) {
+        struct mg_connection *c = mgos_mqtt_get_global_conn();
+
+        if(c != NULL) {
+            printf("Sending data\n");
+            mg_mqtt_publish(c, mgos_sys_config_get_mqtt_pub(), mgos_mqtt_get_packet_id(),
+                            MG_MQTT_QOS(0), "stayin' alive", 13);
+        }
+        else {
+            printf("Unable to send data\n");
+        }
+    }
+
     printf("RSSI: %d\n", rssi);
     printf("Status: %s\n", status_str);
-    printf("Disconnected timer: %d\n", disconnected_counter);
+    printf("Disconnected timer: %d (%d)\n", disconnected_counter, DISCONNECT_DURATION);
 
     if(disconnected_counter >= DISCONNECT_DURATION) {
         disconnected_counter = 0;
-        run_onpc(ONPC_DURATION * 1000);
+        run_onpc();
     }
 
     printf("\n");
@@ -448,22 +499,53 @@ static void check_wifi(void *arg) {
 
 static void start(void *arg) {
     printf("Starting...\n");
+
+    DISCONNECT_DURATION = mgos_rand_range(DISCONNECT_DURATION_MIN, DISCONNECT_DURATION_MAX);
+    printf("Disconnect duration: %d\n", DISCONNECT_DURATION);
+
     check_timer_id = mgos_set_timer(1000, MGOS_TIMER_REPEAT, check_wifi, NULL);
 
     (void) arg;
+}
+
+
+static void ev_handler(struct mg_connection *c, int ev, void *p,
+                       void *user_data) {
+    struct mg_mqtt_message *msg = (struct mg_mqtt_message *) p;
+
+    // if (ev != MG_EV_POLL) {
+    //     LOG(LL_INFO, ("MQTT ev: %d", ev));
+    // }
+
+    (void) c;
+    (void) ev;
+    (void) msg;
+    (void) user_data;
 }
 
 enum mgos_app_init_result mgos_app_init(void) {
     // Set up RPC for config changes
     mgos_rpc_service_config_init();
 
-    // Get configuration parameters
-    ONPC_DURATION = mgos_sys_config_get_onpc_duration();
-    DISCONNECT_DURATION = mgos_sys_config_get_onpc_disconnect_duration();
-    LED = mgos_sys_config_get_onpc_status_led();
+    // Get ONPC configuration options
+    ONPC_SYMBOLS = mgos_sys_config_get_onpc_symbols();
     unsigned int transmitter_symbol = mgos_sys_config_get_onpc_symbol();
 
+    // Set up MAC
+    if (mgos_sys_config_get_onpc_mac_enable()) {
+        DISCONNECT_DURATION_MIN = mgos_sys_config_get_onpc_mac_disconnect_duration_min();
+        DISCONNECT_DURATION_MAX = mgos_sys_config_get_onpc_mac_disconnect_duration_max();
+    }
+    else {
+        DISCONNECT_DURATION_MIN = mgos_sys_config_get_onpc_disconnect_duration();
+        DISCONNECT_DURATION_MAX = mgos_sys_config_get_onpc_disconnect_duration();
+    }
+
+    // Set up UDP options
+    SEND_DATA = mgos_sys_config_get_mqtt_enable();
+
     // Set up LED
+    LED = mgos_sys_config_get_onpc_status_led();
     mgos_gpio_set_mode(LED, MGOS_GPIO_MODE_OUTPUT);
     mgos_gpio_write(LED, false);
 
@@ -487,12 +569,16 @@ enum mgos_app_init_result mgos_app_init(void) {
 
     printf("Pause time: %d us\n", pause_time);
     printf("Beacon size: %d bytes\n", frame_size);
-    printf("ONPC duration: %d s\n", ONPC_DURATION);
-    printf("Disconnect duration: %d s\n", DISCONNECT_DURATION);
+    printf("ONPC symbols: %d\n", ONPC_SYMBOLS);
+    printf("Min disconnect duration: %d s\n", DISCONNECT_DURATION_MIN);
+    printf("Max disconnect duration: %d s\n", DISCONNECT_DURATION_MAX);
+    printf("Send data: %d\n", SEND_DATA);
     printf("-----------------------------------\n");
 
+    mgos_mqtt_add_global_handler(ev_handler, NULL);
+
     // Allow system to finish connecting
-    mgos_set_timer(10000, 0, start, NULL);
+    mgos_set_timer(mgos_sys_config_get_onpc_delay() * 1000, 0, start, NULL);
 
     return MGOS_APP_INIT_SUCCESS;
 }
