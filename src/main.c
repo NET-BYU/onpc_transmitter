@@ -530,6 +530,15 @@ enum mgos_app_init_result mgos_app_init(void) {
     // Get ONPC configuration options
     ONPC_SYMBOLS = mgos_sys_config_get_onpc_symbols();
     unsigned int transmitter_symbol = mgos_sys_config_get_onpc_symbol();
+    int tx_power = mgos_sys_config_get_onpc_tx_power();
+
+    if(tx_power > 82) {
+        tx_power = 82;
+    }
+    else if(tx_power < 0) {
+        tx_power = 0;
+    }
+    system_phy_set_max_tpw(tx_power);
 
     // Set up MAC
     if (mgos_sys_config_get_onpc_mac_enable()) {
@@ -573,6 +582,7 @@ enum mgos_app_init_result mgos_app_init(void) {
     printf("Min disconnect duration: %d s\n", DISCONNECT_DURATION_MIN);
     printf("Max disconnect duration: %d s\n", DISCONNECT_DURATION_MAX);
     printf("Send data: %d\n", SEND_DATA);
+    printf("TX Power: %d\n", tx_power);
     printf("-----------------------------------\n");
 
     mgos_mqtt_add_global_handler(ev_handler, NULL);

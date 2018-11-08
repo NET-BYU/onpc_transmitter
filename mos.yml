@@ -14,6 +14,7 @@ config_schema:
   - ["onpc.status_led", "i", 2, {"title": "LED used for ONPC status"}]
   - ["onpc.symbol", "i", 1, {"title": Which symbol to transmit"}]
   - ["onpc.disconnect_duration", "i", 30, {"title": "The amount of time being disconnected before running ONPC (s) -- Only used if MAC is disabled"}]
+  - ["onpc.tx_power", "i", 82, {"title": "TX power (0-82)"}]
 
   - ["onpc.mac", "o", {"title": "ONPC MAC settings"}]
   - ["onpc.mac.enable", "b", false, {"title": "Enable ONPC MAC"}]
